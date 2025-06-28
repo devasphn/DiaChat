@@ -64,11 +64,7 @@ def check_whisper():
 def check_dia():
     print("[check] Dia TTS model...")
     set_deterministic_seed(TTS_SEED)
-    dia = Dia.from_pretrained(
-        DIA_MODEL_NAME,
-        device=DEVICE,
-        compute_dtype="float16"
-    )
+    dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
     print("[check] ✅ Dia loaded")
     set_deterministic_seed(TTS_SEED)
     audio = dia.generate(
