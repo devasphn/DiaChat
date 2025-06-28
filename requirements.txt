@@ -1,13 +1,28 @@
-numpy>=1.24.0
-resampy>=0.4.0
-webrtcvad>=2.0.0
-httpx>=0.25.0
-ollama>=0.3.0
-pywhispercpp>=1.2.0
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-torch>=2.1.0
-torchaudio>=0.16.0
-huggingface_hub>=0.19.0
-soundfile>=0.12.0
+# PyTorch 2.7.1 ecosystem (latest stable)
+torch==2.7.1
+torchaudio==2.7.1
+torchvision==0.22.1
+
+# NumPy 2.2.6 (as you specified - supported by PyTorch 2.7+)
+numpy==2.2.6
+
+# Core dependencies with updated versions
+resampy==0.4.2
+webrtcvad==2.0.11
+httpx==0.25.2
+ollama==0.4.8
+pywhispercpp==1.2.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+huggingface_hub==0.19.4
+soundfile==0.12.1
+
+# Dia TTS dependencies (from official pyproject.toml)
+descript-audio-codec>=1.0.0
+safetensors>=0.5.3
+gradio>=5.25.2
+pydantic>=2.11.3
+triton==3.2.0; sys_platform == "linux"
+
+# Install Dia model from nari-labs GitHub
 git+https://github.com/nari-labs/dia.git
