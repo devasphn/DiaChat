@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎙️ DiaChat - Optimized Voice AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.6);
+        }
+        
+        .btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn.stop {
+            background: linear-gradient(45deg, #e53e3e, #c53030);
+        }
+        
+        .btn.stop:hover {
+            box-shadow: 0 6px 20px rgba(229, 62, 62, 0.6);
+        }
+        
+        .status {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(72, 187, 120, 0.1);
+            border: 2px solid #48bb78;
+            color: #2d7d32;
+        }
+        
+        .status.listening {
+            background: rgba(66, 153, 225, 0.1);
+            border-color: #4299e1;
+            color: #2b6cb0;
+        }
+        
+        .status.processing {
+            background: rgba(237, 137, 54, 0.1);
+            border-color: #ed8936;
+            color: #c05621;
+        }
+        
+        .status.speaking {
+            background: rgba(159, 122, 234, 0.1);
+            border-color: #9f7aea;
+            color: #6b46c1;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        
+        .speed-control input {
+            width: 100px;
+        }
+        
+        .section {
+            background: rgba(247, 250, 252, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        
+        .section h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3em;
+        }
+        
+        .waveform-container {
+            height: 100px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #waveform {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1, #3182ce);
+        }
+        
+        .status-box {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .processing {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .chat-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .chat-message.user {
+            background: rgba(66, 153, 225, 0.1);
+            border-left: 4px solid #4299e1;
+        }
+        
+        .chat-message.ai {
+            background: rgba(72, 187, 120, 0.1);
+            border-left: 4px solid #48bb78;
+        }
+        
+        .chat-message strong {
+            color: #2d3748;
+            font-weight: 700;
+        }
+        
+        .optimized-badge {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+            box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ DiaChat <span class="optimized-badge">Voice Optimized</span></h1>
+        
+        <div class="controls">
+            <button id="startBtn" class="btn">🎤 Start Listening</button>
+            <button id="stopBtn" class="btn stop" disabled>⏹️ Stop</button>
+            <div class="speed-control">
+                <label for="playbackSpeed">🎵 Playback Speed:</label>
+                <input type="range" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0">
+                <span id="speedValue">1.0x</span>
+            </div>
+        </div>
+        
+        <div id="status" class="status">Ready to start - Optimized for consistent voice quality</div>
+        
+        <div class="section">
+            <h3>🎵 Audio Waveform</h3>
+            <div class="waveform-container">
+                <canvas id="waveform" width="800" height="100"></canvas>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>🎯 Whisper Status</h3>
+            <div id="whisperStatus" class="status-box">Waiting for audio...</div>
+        </div>
+        
+        <div class="section">
+            <h3>🤖 Dia TTS Status <span class="optimized-badge">S1 Voice Only</span></h3>
+            <div id="ttsStatus" class="status-box">Waiting for text...</div>
+        </div>
+        
+        <div class="section">
+            <h3>💬 Conversation</h3>
+            <div id="chatLog" class="chat-log">
+                <div class="chat-message ai">
+                    <strong>🤖 DiaChat:</strong> Hello! I'm ready to chat with optimized voice consistency. Start speaking to begin our conversation.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let isRecording = false;
+        let currentAudio = null;
+        
+        // UI elements
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const whisperStatus = document.getElementById('whisperStatus');
+        const ttsStatus = document.getElementById('ttsStatus');
+        const chatLog = document.getElementById('chatLog');
+        const playbackSpeed = document.getElementById('playbackSpeed');
+        const speedValue = document.getElementById('speedValue');
+        const waveformCanvas = document.getElementById('waveform');
+        const waveformCtx = waveformCanvas.getContext('2d');
+        
+        // Playback speed control
+        playbackSpeed.addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            speedValue.textContent = speed.toFixed(1) + 'x';
+            if (currentAudio) {
+                currentAudio.playbackRate = speed;
+            }
+        });
+        
+        // Waveform visualization
+        let waveformData = new Array(100).fill(0);
+        
+        function updateWaveform(audioData) {
+            if (!audioData) return;
+            
+            const samples = new Int16Array(audioData);
+            const bufferLength = Math.min(samples.length, 100);
+            const step = Math.floor(samples.length / bufferLength);
+            
+            for (let i = 0; i < bufferLength; i++) {
+                waveformData[i] = Math.abs(samples[i * step]) / 32768;
+            }
+            
+            drawWaveform();
+        }
+        
+        function drawWaveform() {
+            waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            
+            const barWidth = waveformCanvas.width / waveformData.length;
+            const gradient = waveformCtx.createLinearGradient(0, 0, 0, waveformCanvas.height);
+            gradient.addColorStop(0, '#4299e1');
+            gradient.addColorStop(1, '#3182ce');
+            
+            waveformCtx.fillStyle = gradient;
+            
+            for (let i = 0; i < waveformData.length; i++) {
+                const barHeight = waveformData[i] * waveformCanvas.height;
+                const x = i * barWidth;
+                const y = waveformCanvas.height - barHeight;
+                
+                waveformCtx.fillRect(x, y, barWidth - 1, barHeight);
+            }
+        }
+        
+        // Initialize waveform
+        drawWaveform();
+        
+        function updateStatus(text, className = '') {
+            status.textContent = text;
+            status.className = 'status ' + className;
+        }
+        
+        function addChatMessage(sender, message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isUser ? 'user' : 'ai'}`;
+            messageDiv.innerHTML = `<strong>${isUser ? '👤 You:' : '🤖 DiaChat:'}</strong> ${message}`;
+            chatLog.appendChild(messageDiv);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        
+        function updateWhisperStatus(text, processing = false) {
+            whisperStatus.textContent = text;
+            whisperStatus.className = processing ? 'status-box processing' : 'status-box';
+        }
+        
+        function updateTTSStatus(text, processing = false) {
+            ttsStatus.textContent = text;
+            ttsStatus.className = processing ? 'status-box processing' : 'status-box';
+        }
+        
+        async function startRecording() {
+            try {
+                updateStatus('🔗 Connecting to server...', 'processing');
+                
+                // Connect WebSocket
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${protocol}//${window.location.host}/ws/audio`);
+                
+                ws.onopen = async () => {
+                    updateStatus('🎤 Getting microphone access...', 'processing');
+                    
+                    // Get microphone access
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: { 
+                            sampleRate: 48000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+                    
+                    // Set up audio context for processing
+                    audioContext = new AudioContext({ sampleRate: 48000 });
+                    const source = audioContext.createMediaStreamSource(mediaStream);
+                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                    
+                    processor.onaudioprocess = (e) => {
+                        if (!isRecording) return;
+                        
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const audioData = new Int16Array(inputData.length);
+                        
+                        // Convert float to int16
+                        for (let i = 0; i < inputData.length; i++) {
+                            audioData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                        }
+                        
+                        // Update waveform
+                        updateWaveform(audioData.buffer);
+                        
+                        // Send to server
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(audioData.buffer);
+                        }
+                    };
+                    
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+                    
+                    isRecording = true;
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    updateStatus('🎤 Listening... (Optimized for voice consistency)', 'listening');
+                };
+                
+                ws.onmessage = async (event) => {
+                    if (event.data instanceof ArrayBuffer) {
+                        // Audio data
+                        updateStatus('🔊 Playing AI response...', 'speaking');
+                        
+                        const audioBlob = new Blob([event.data], { type: 'audio/wav' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        
+                        if (currentAudio) {
+                            currentAudio.pause();
+                        }
+                        
+                        currentAudio = new Audio(audioUrl);
+                        currentAudio.playbackRate = parseFloat(playbackSpeed.value);
+                        
+                        currentAudio.onended = () => {
+                            URL.revokeObjectURL(audioUrl);
+                            if (isRecording) {
+                                updateStatus('🎤 Listening... (Optimized for voice consistency)', 'listening');
+                            }
+                        };
+                        
+                        await currentAudio.play();
+                        
+                    } else {
+                        // JSON data
+                        const data = JSON.parse(event.data);
+                        
+                        switch (data.type) {
+                            case 'text':
+                                addChatMessage('You', data.payload, true);
+                                break;
+                            case 'ai_response':
+                                addChatMessage('DiaChat', data.payload, false);
+                                break;
+                            case 'whisper_status':
+                                updateWhisperStatus(data.payload, data.processing || false);
+                                break;
+                            case 'tts_status':
+                                updateTTSStatus(data.payload, data.processing || false);
+                                break;
+                        }
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('❌ Connection error', 'processing');
+                };
+                
+                ws.onclose = () => {
+                    updateStatus('🔗 Disconnected from server', 'processing');
+                };
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                updateStatus('❌ Failed to start recording: ' + error.message, 'processing');
+            }
+        }
+        
+        function stopRecording() {
+            isRecording = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            updateStatus('🔴 Stopped - Ready to start again', '');
+            updateWhisperStatus('Waiting for audio...');
+            updateTTSStatus('Waiting for text...');
+            
+            // Clear waveform
+            waveformData.fill(0);
+            drawWaveform();
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', stopRecording);
+    </script>
+</body>
+</html>
