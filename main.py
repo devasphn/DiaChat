@@ -114,7 +114,7 @@ def check_whisper():
         return False
 
 def check_dia():
-    """Test Dia model loading with voice consistency - FIXED VERSION"""
+    """Test Dia model loading with CORRECTED generate method call"""
     print("[check] Testing Dia model with voice consistency...")
     print(f"[check] Loading Dia model: {DIA_MODEL_NAME}")
     try:
@@ -125,16 +125,23 @@ def check_dia():
         dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
         print(f"[check] ✅ Dia model loaded successfully on {DEVICE}")
         
-        # Test consistent voice generation
+        # Test consistent voice generation with CORRECT method signature
         print("[check] Testing voice consistency with fixed S1 speaker...")
         test_text = f"{FIXED_VOICE_PROMPT} Hello, this is a consistent voice test using fixed seed."
         
         # Apply seed again before generation
         set_deterministic_seed(TTS_SEED)
+        
+        # FIXED: Use correct method signature without max_length
         audio_output = dia.generate(
-            test_text, 
+            text=test_text,
             use_torch_compile=False,
-            max_length=2000
+            cfg_scale=3.0,
+            temperature=VOICE_TEMPERATURE,
+            top_p=0.95,
+            cfg_filter_top_k=35,
+            verbose=True,
+            seed=TTS_SEED
         )
         print(f"[check] ✅ Dia voice consistency test successful. Generated {audio_output.shape} samples")
         return True
@@ -143,7 +150,7 @@ def check_dia():
         print(f"[check] ❌ Dia model failed: {e}")
         print(f"[check] ℹ️ Model name used: {DIA_MODEL_NAME}")
         print(f"[check] ℹ️ Device: {DEVICE}")
-        print(f"[check] ℹ️ If error persists, check HuggingFace authentication")
+        print(f"[check] ℹ️ If error persists, check method signature or model compatibility")
         return False
 
 def check_audio_processing():
@@ -364,7 +371,7 @@ def llm_worker():
             messages.append({"role": "assistant", "content": full_response_content.strip()})
 
 def tts_worker():
-    """TTS worker with OPTIMIZED voice consistency - FIXED VERSION"""
+    """TTS worker with CORRECTED Dia.generate() method calls"""
     # Set seed before loading model for voice consistency
     set_deterministic_seed(TTS_SEED)
     
@@ -390,12 +397,17 @@ def tts_worker():
             # CRITICAL: Reset seed before each generation for voice consistency
             set_deterministic_seed(TTS_SEED)
             
-            # Generate with consistent settings
+            # FIXED: Use correct method signature without max_length
             pcm24 = dia.generate(
-                dia_input_text, 
+                text=dia_input_text,
                 use_torch_compile=False,  # Disable for deterministic behavior
-                max_length=2500,  # Limit to prevent speed issues
-                temperature=VOICE_TEMPERATURE  # Lower temperature for consistency
+                cfg_scale=3.0,
+                temperature=VOICE_TEMPERATURE,  # Lower temperature for consistency
+                top_p=0.95,
+                cfg_filter_top_k=35,
+                verbose=False,  # Reduce verbosity in production
+                seed=TTS_SEED,
+                text_to_generate_size=len(sentence)  # Use text_to_generate_size instead of max_length
             )
             
             if hasattr(pcm24, 'cpu'): 
