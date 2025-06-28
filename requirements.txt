@@ -8,7 +8,7 @@ numpy==2.2.6
 
 # Audio processing / HTTP / FastAPI
 resampy==0.4.2
-webrtcvad==2.0.11
+webrtcvad==2.0.10
 soundfile==0.12.1
 httpx==0.25.2
 
