@@ -43,6 +43,13 @@ OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 TTS_SEED           = 42
 FIXED_VOICE_PROMPT = "[S1]"
 
+DIA_SYSTEM_PROMPT = """
+You are a helpful and conversational AI assistant. Your responses will be converted into speech by an advanced Text-to-Speech system.
+To make the speech sound natural, keep responses coherent, directly answer the user's queries, and maintain a friendly conversational tone.
+Keep responses moderate in length for optimal audio quality.
+"""
+
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[main] Device: {DEVICE}")
 print(f"[main] PyTorch: {torch.__version__}, NumPy: {np.__version__}")
