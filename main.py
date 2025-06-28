@@ -13,18 +13,24 @@ import torch
 
 from pywhispercpp.model import Model
 from dia.model import Dia
+from dia.layers import DiaConfig                # ← import DiaConfig
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 import uvicorn
 
+# ────────── PATCH ──────────
+# Instruct Pydantic v1 to ignore missing/extra fields in config.json
+DiaConfig.Config.extra = "ignore"
+# ───────────────────────────
+
 # ---------- CONFIGURATION ----------
-MODELS_DIR = os.getenv("MODELS_DIR", "./models")
+MODELS_DIR        = os.getenv("MODELS_DIR", "./models")
 os.environ["HF_HUB_CACHE"] = MODELS_DIR
 
 WHISPER_MODEL_NAME = "base.en"
 DIA_MODEL_NAME     = "nari-labs/Dia-1.6B"
 OLLAMA_HOST        = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
+OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL","llama3.2:latest")
 
 TTS_SEED           = 42
 FIXED_VOICE_PROMPT = "[S1]"
@@ -64,7 +70,11 @@ def check_whisper():
 def check_dia():
     print("[check] Dia TTS model...")
     set_deterministic_seed(TTS_SEED)
-    dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
+    dia = Dia.from_pretrained(
+        DIA_MODEL_NAME,
+        device=DEVICE,
+        compute_dtype="float16"
+    )
     print("[check] ✅ Dia loaded")
     set_deterministic_seed(TTS_SEED)
     audio = dia.generate(
@@ -127,8 +137,8 @@ async def ws_audio(ws: WebSocket):
     try:
         while True:
             data = await ws.receive_bytes()
-            pcm = np.frombuffer(data, np.int16)
-            sr16 = resampy.resample(pcm.astype(np.float32), 48000, 16000)
+            pcm  = np.frombuffer(data, np.int16)
+            sr16 = resampy.resample(pcm.astype(np.float32), 48000,16000)
             to_llm.put(sr16.astype(np.int16).tobytes())
     except WebSocketDisconnect:
         clients.remove(ws)
@@ -150,9 +160,9 @@ def stt_worker():
         while len(buff) >= frameSz:
             frm, buff = buff[:frameSz], buff[frameSz:]
             if vad.is_speech(frm, 16000):
-                audio = np.frombuffer(frm, np.int16).astype(np.float32) / 32768.0
+                audio    = np.frombuffer(frm, np.int16).astype(np.float32) / 32768.0
                 segments = whisper.transcribe(audio)
-                txt = "".join(seg.text for seg in segments).strip()
+                txt      = "".join(seg.text for seg in segments).strip()
                 if txt:
                     ws_queue.put(("text", txt))
                     text_q.put(txt)
@@ -181,9 +191,9 @@ def tts_worker():
     )
     ws_queue.put(("tts_status", "Dia TTS ready"))
     while True:
-        text = to_tts.get()
+        txt = to_tts.get()
         set_deterministic_seed(TTS_SEED)
-        pcm24 = dia.generate(f"{FIXED_VOICE_PROMPT} {text}", use_torch_compile=False, verbose=False)
+        pcm24 = dia.generate(f"{FIXED_VOICE_PROMPT} {txt}", use_torch_compile=False, verbose=False)
         pcm48 = resampy.resample(pcm24.astype(np.float32), 24000, 48000)
         pcm16 = (np.clip(pcm48, -0.9, 0.9) * 32767).astype(np.int16).tobytes()
         ws_queue.put(("audio", pcm16))
@@ -193,9 +203,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DiaChat Voice AI")
     parser.add_argument("--skip-checks", action="store_true")
     args = parser.parse_args()
+
     if not args.skip_checks:
         run_preflight_checks()
+
     for fn in (stt_worker, llm_worker, tts_worker):
         threading.Thread(target=fn, daemon=True).start()
+
     print("🚀 Server running at http://0.0.0.0:8000")
     uvicorn.run(app, host="0.0.0.0", port=8000)
