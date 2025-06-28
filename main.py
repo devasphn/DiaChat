@@ -28,19 +28,22 @@ MODELS_DIR = os.getenv("MODELS_DIR", "./models")
 os.environ["HF_HUB_CACHE"] = os.path.abspath(MODELS_DIR)
 
 WHISPER_MODEL_NAME = "base.en"
-DIA_MODEL_NAME = "nari-labs/Dia-1.6B-0626"
+# Use the official Dia model from HuggingFace Hub
+DIA_MODEL_NAME = "nari-labs/Dia-1.6B"
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
-# VOICE CONSISTENCY SETTINGS - For voice consistency we'll use manual seeding
-TTS_SEED = 42  # Fixed seed for consistent voice generation
-FIXED_VOICE_PROMPT = "[S1]"  # Only use S1 speaker for consistency
+# VOICE CONSISTENCY SETTINGS
+TTS_SEED = 42
+FIXED_VOICE_PROMPT = "[S1]"
 
 DIA_SYSTEM_PROMPT = """You are a helpful and conversational AI assistant. Your responses will be converted into speech by an advanced Text-to-Speech system. Keep your responses coherent, direct, and maintain a friendly conversational tone. Keep responses moderate in length for optimal audio quality."""
 
 # Auto-detect device
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[main] Using device: {DEVICE}")
+print(f"[main] PyTorch version: {torch.__version__}")
+print(f"[main] NumPy version: {np.__version__}")
 
 # ---------- VOICE CONSISTENCY FUNCTIONS ----------
 def set_deterministic_seed(seed: int):
@@ -112,24 +115,25 @@ def check_whisper():
         return False
 
 def check_dia():
-    """Test Dia model loading with CORRECT generate method call"""
+    """Test Dia model loading with voice consistency - CORRECTED for PyTorch 2.7 + NumPy 2.2.6"""
     print("[check] Testing Dia model with voice consistency...")
     print(f"[check] Loading Dia model: {DIA_MODEL_NAME}")
     try:
         # Apply seed before model loading
         set_deterministic_seed(TTS_SEED)
         
+        # Load Dia model - compatible with PyTorch 2.7 and NumPy 2.2.6
         dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
         print(f"[check] ✅ Dia model loaded successfully on {DEVICE}")
         
-        # Test voice generation with CORRECT method signature
+        # Test voice generation with correct API
         print("[check] Testing voice consistency with fixed S1 speaker...")
         test_text = f"{FIXED_VOICE_PROMPT} Hello, this is a consistent voice test using fixed seed."
         
         # Apply seed again before generation
         set_deterministic_seed(TTS_SEED)
         
-        # FIXED: Use ONLY the supported parameters
+        # Use correct Dia API (compatible with latest version)
         audio_output = dia.generate(test_text, use_torch_compile=False, verbose=True)
         print(f"[check] ✅ Dia voice consistency test successful. Generated {audio_output.shape} samples")
         return True
@@ -162,6 +166,9 @@ def check_audio_processing():
 def run_preflight_checks():
     """Run all pre-flight checks"""
     print("\n🚀 Starting DiaChat Voice-Optimized Pre-flight Checks...\n")
+    print(f"[system] PyTorch: {torch.__version__}")
+    print(f"[system] NumPy: {np.__version__}")
+    print(f"[system] CUDA Available: {torch.cuda.is_available()}")
     
     checks = [
         ("Audio Processing", check_audio_processing),
@@ -358,10 +365,11 @@ def llm_worker():
             messages.append({"role": "assistant", "content": full_response_content.strip()})
 
 def tts_worker():
-    """TTS worker with CORRECTED Dia.generate() method calls"""
+    """TTS worker with CORRECTED Dia.generate() API calls for PyTorch 2.7 + NumPy 2.2.6"""
     # Set seed before loading model for voice consistency
     set_deterministic_seed(TTS_SEED)
     
+    # Load Dia model compatible with PyTorch 2.7 and NumPy 2.2.6
     dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
     ws_out_queue.put(("tts_status", "🎯 Voice-optimized Dia TTS ready (S1 speaker only)", False))
     
@@ -374,7 +382,7 @@ def tts_worker():
         if not sentence.endswith(('.', '!', '?')):
             sentence += '.'
             
-        # Use ONLY S1 speaker for consistency - this is critical
+        # Use ONLY S1 speaker for consistency
         dia_input_text = f"{FIXED_VOICE_PROMPT} {sentence}"
         
         ws_out_queue.put(("tts_status", f"🔄 Generating consistent S1 voice...", True))
@@ -383,7 +391,7 @@ def tts_worker():
             # CRITICAL: Reset seed before each generation for voice consistency
             set_deterministic_seed(TTS_SEED)
             
-            # FIXED: Use ONLY the supported parameters - no extra parameters!
+            # Use correct Dia API (compatible with latest PyTorch 2.7 + NumPy 2.2.6)
             pcm24 = dia.generate(dia_input_text, use_torch_compile=False, verbose=False)
             
             if hasattr(pcm24, 'cpu'): 
