@@ -24,7 +24,7 @@ fastapi==0.115.2
 uvicorn[standard]==0.24.0
 
 # Hugging Face utilities
-huggingface_hub==0.19.4
+huggingface_hub>=0.15.1
 
 # Dia TTS extras
 descript-audio-codec>=1.0.0
