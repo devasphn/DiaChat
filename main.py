@@ -34,7 +34,6 @@ FIXED_VOICE_PROMPT = "[S1]"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[main] Device: {DEVICE}")
-print(f"[main] PyTorch: {torch.__version__}, NumPy: {np.__version__}, Ollama: {ollama.__version__}")
 
 def set_deterministic_seed(seed: int):
     random.seed(seed)
