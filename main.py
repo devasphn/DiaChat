@@ -5,6 +5,7 @@ import asyncio
 import queue
 import threading
 import random
+
 import numpy as np
 import resampy
 import webrtcvad
@@ -13,24 +14,19 @@ import torch
 
 from pywhispercpp.model import Model
 from dia.model import Dia
-from dia.layers import DiaConfig                # ← import DiaConfig
+from transformers import AutoConfig
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 import uvicorn
 
-# ────────── PATCH ──────────
-# Instruct Pydantic v1 to ignore missing/extra fields in config.json
-DiaConfig.Config.extra = "ignore"
-# ───────────────────────────
-
-# ---------- CONFIGURATION ----------
-MODELS_DIR        = os.getenv("MODELS_DIR", "./models")
+# ─── CONFIG ───────────────────────────────────────────────────────────────────
+MODELS_DIR = os.getenv("MODELS_DIR", "./models")
 os.environ["HF_HUB_CACHE"] = MODELS_DIR
 
 WHISPER_MODEL_NAME = "base.en"
 DIA_MODEL_NAME     = "nari-labs/Dia-1.6B"
 OLLAMA_HOST        = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL","llama3.2:latest")
+OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
 TTS_SEED           = 42
 FIXED_VOICE_PROMPT = "[S1]"
@@ -49,10 +45,9 @@ def set_deterministic_seed(seed: int):
         torch.backends.cudnn.benchmark     = False
     print(f"[voice] Seed set to {seed}")
 
-# Seed at startup
 set_deterministic_seed(TTS_SEED)
 
-# ---------- PRE-FLIGHT CHECKS ----------
+# ─── PRE-FLIGHT CHECKS ─────────────────────────────────────────────────────────
 def check_audio():
     print("[check] Audio processing...")
     vad = webrtcvad.Vad(2)
@@ -69,9 +64,12 @@ def check_whisper():
 
 def check_dia():
     print("[check] Dia TTS model...")
+    # reload config with both encoder & decoder present
+    config = AutoConfig.from_pretrained(DIA_MODEL_NAME)
     set_deterministic_seed(TTS_SEED)
     dia = Dia.from_pretrained(
         DIA_MODEL_NAME,
+        config=config,
         device=DEVICE,
         compute_dtype="float16"
     )
@@ -111,7 +109,7 @@ def run_preflight_checks():
             sys.exit(1)
     print("\n🎉 All checks passed!\n")
 
-# ---------- FASTAPI + WEBSOCKET ----------
+# ─── FASTAPI + WEBSOCKET ───────────────────────────────────────────────────────
 app      = FastAPI()
 clients  = set()
 to_llm   = queue.Queue()
@@ -132,44 +130,42 @@ async def ws_audio(ws: WebSocket):
             else:
                 await ws.send_json({"type": typ, "payload": payload})
 
-    sender_task = asyncio.create_task(sender())
-
+    task = asyncio.create_task(sender())
     try:
         while True:
             data = await ws.receive_bytes()
             pcm  = np.frombuffer(data, np.int16)
-            sr16 = resampy.resample(pcm.astype(np.float32), 48000,16000)
+            sr16 = resampy.resample(pcm.astype(np.float32), 48000, 16000)
             to_llm.put(sr16.astype(np.int16).tobytes())
     except WebSocketDisconnect:
         clients.remove(ws)
-        sender_task.cancel()
+        task.cancel()
 
 @app.get("/")
 def index():
     return FileResponse("index.html")
 
-# ---------- BACKGROUND WORKERS ----------
+# ─── BACKGROUND WORKERS ───────────────────────────────────────────────────────
 def stt_worker():
-    vad     = webrtcvad.Vad(2)
+    vad = webrtcvad.Vad(2)
     whisper = Model(WHISPER_MODEL_NAME)
-    buff    = b""
+    buff = b""
     frameSz = int(16000 * 0.03) * 2
     while True:
         chunk = to_llm.get()
-        buff  += chunk
+        buff += chunk
         while len(buff) >= frameSz:
             frm, buff = buff[:frameSz], buff[frameSz:]
             if vad.is_speech(frm, 16000):
-                audio    = np.frombuffer(frm, np.int16).astype(np.float32) / 32768.0
-                segments = whisper.transcribe(audio)
-                txt      = "".join(seg.text for seg in segments).strip()
+                audio = np.frombuffer(frm, np.int16).astype(np.float32) / 32768.0
+                txt = "".join(seg.text for seg in whisper.transcribe(audio)).strip()
                 if txt:
                     ws_queue.put(("text", txt))
                     text_q.put(txt)
 
 def llm_worker():
     client = ollama.Client(host=OLLAMA_HOST)
-    conv   = [{"role":"system","content":DIA_SYSTEM_PROMPT}]
+    conv = [{"role":"system","content":DIA_SYSTEM_PROMPT}]
     while True:
         user_txt = text_q.get()
         conv.append({"role":"user","content":user_txt})
@@ -178,27 +174,30 @@ def llm_worker():
             full += chunk["message"]["content"]
         ws_queue.put(("ai_response", full))
         conv.append({"role":"assistant","content":full})
-        for sentence in full.split("."):
-            if sentence.strip():
-                to_tts.put(sentence.strip())
+        for sent in full.split("."):
+            if sent.strip():
+                to_tts.put(sent.strip())
 
 def tts_worker():
     set_deterministic_seed(TTS_SEED)
+    # reuse same config
+    config = AutoConfig.from_pretrained(DIA_MODEL_NAME)
     dia = Dia.from_pretrained(
         DIA_MODEL_NAME,
+        config=config,
         device=DEVICE,
         compute_dtype="float16"
     )
     ws_queue.put(("tts_status", "Dia TTS ready"))
     while True:
-        txt = to_tts.get()
+        text = to_tts.get()
         set_deterministic_seed(TTS_SEED)
-        pcm24 = dia.generate(f"{FIXED_VOICE_PROMPT} {txt}", use_torch_compile=False, verbose=False)
+        pcm24 = dia.generate(f"{FIXED_VOICE_PROMPT} {text}", use_torch_compile=False, verbose=False)
         pcm48 = resampy.resample(pcm24.astype(np.float32), 24000, 48000)
         pcm16 = (np.clip(pcm48, -0.9, 0.9) * 32767).astype(np.int16).tobytes()
         ws_queue.put(("audio", pcm16))
 
-# ---------- ENTRYPOINT ----------
+# ─── ENTRYPOINT ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DiaChat Voice AI")
     parser.add_argument("--skip-checks", action="store_true")
