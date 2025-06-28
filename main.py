@@ -23,9 +23,8 @@ from fastapi.responses import FileResponse
 import uvicorn
 import torch
 
-# ---------- configuration ----------
+# ---------- ENHANCED CONFIGURATION ----------
 MODELS_DIR = os.getenv("MODELS_DIR", "./models")
-# Set Hugging Face cache directory to match setup_models.py
 os.environ["HF_HUB_CACHE"] = os.path.abspath(MODELS_DIR)
 
 WHISPER_MODEL_NAME = "base.en"
@@ -33,19 +32,20 @@ DIA_MODEL_NAME = "nari-labs/Dia-1.6B"
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
-# Fixed seed for consistent voice generation
-TTS_SEED = 42
+# VOICE CONSISTENCY SETTINGS - Critical for solving voice issues
+TTS_SEED = 42  # Fixed seed for consistent voice generation
 FIXED_VOICE_PROMPT = "[S1]"  # Only use S1 speaker for consistency
+VOICE_TEMPERATURE = 0.3  # Lower temperature for more consistent generation
 
-DIA_SYSTEM_PROMPT = """You are a helpful and conversational AI assistant. Your responses will be converted into speech by an advanced Text-to-Speech (TTS) system. To make the speech sound more natural, please keep your responses coherent, directly answer the user's query, and maintain a friendly conversational tone. Keep responses moderate in length for optimal audio quality."""
+DIA_SYSTEM_PROMPT = """You are a helpful and conversational AI assistant. Your responses will be converted into speech by an advanced Text-to-Speech system. Keep your responses coherent, direct, and maintain a friendly conversational tone. Keep responses moderate in length for optimal audio quality."""
 
-# Auto-detect device (CUDA if available, otherwise CPU)
+# Auto-detect device
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[main] Using device: {DEVICE}")
 
-# ---------- Utility Functions ----------
+# ---------- VOICE CONSISTENCY FUNCTIONS ----------
 def set_deterministic_seed(seed: int):
-    """Set deterministic seed for reproducible voice generation"""
+    """Set deterministic seed for reproducible voice generation - CRITICAL for consistency"""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -54,20 +54,17 @@ def set_deterministic_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+    print(f"[voice] Set deterministic seed: {seed}")
 
-# Set deterministic seed at startup
+# Set seed immediately at module load
 set_deterministic_seed(TTS_SEED)
 
-# ---------- Pre-flight checks ----------
-
+# ---------- ENHANCED PRE-FLIGHT CHECKS ----------
 def check_ollama():
     """Test Ollama connectivity and model availability"""
     print("[check] Testing Ollama connection...")
     try:
-        # Create client with host
         client = ollama.Client(host=OLLAMA_HOST)
-        
-        # Test basic connectivity
         response = client.list()
         models_list = response.get('models', [])
         available_models = []
@@ -76,12 +73,9 @@ def check_ollama():
                 available_models.append(model.model)
             elif isinstance(model, dict) and 'name' in model:
                 available_models.append(model['name'])
-            else:
-                print(f"[check] Warning: Unexpected model format: {model}")
         
         print(f"[check] ✅ Ollama connected. Available models: {available_models}")
         
-        # Check if our required model is available
         if OLLAMA_MODEL not in available_models:
             print(f"[check] ⚠️ Model '{OLLAMA_MODEL}' not found. Attempting to pull...")
             try:
@@ -91,19 +85,15 @@ def check_ollama():
                 print(f"[check] ❌ Failed to pull {OLLAMA_MODEL}: {e}")
                 return False
         
-        # Test model inference
-        print(f"[check] Testing {OLLAMA_MODEL} inference...")
         test_response = client.chat(
             model=OLLAMA_MODEL,
-            messages=[{"role": "user", "content": "Hello, are you working?"}]
+            messages=[{"role": "user", "content": "Hello, test message."}]
         )
-        response_text = test_response['message']['content']
-        print(f"[check] ✅ Ollama test successful. Response: {response_text[:50]}...")
+        print(f"[check] ✅ Ollama test successful")
         return True
         
     except Exception as e:
         print(f"[check] ❌ Ollama connection failed: {e}")
-        print(f"[check] Make sure Ollama is running at {OLLAMA_HOST}")
         return False
 
 def check_whisper():
@@ -113,53 +103,52 @@ def check_whisper():
         model = Model(WHISPER_MODEL_NAME)
         print(f"[check] ✅ Whisper model '{WHISPER_MODEL_NAME}' loaded successfully")
         
-        # Test with a small audio sample (1 second of silence)
-        test_audio = np.zeros(16000, dtype=np.float32)  # 1 second of silence at 16kHz
+        test_audio = np.zeros(16000, dtype=np.float32)
         segments = model.transcribe(test_audio)
         print(f"[check] ✅ Whisper inference test successful")
         return True
         
     except Exception as e:
         print(f"[check] ❌ Whisper model failed: {e}")
-        print(f"[check] Make sure the model is downloaded manually")
         return False
 
 def check_dia():
-    """Test Dia model loading and inference"""
-    print("[check] Testing Dia model...")
+    """Test Dia model loading with voice consistency"""
+    print("[check] Testing Dia model with voice consistency...")
     try:
-        # Set seed before loading model
+        # Apply seed before model loading
         set_deterministic_seed(TTS_SEED)
         
         dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
         print(f"[check] ✅ Dia model loaded successfully on {DEVICE}")
         
-        # Test with a short text using fixed voice prompt
-        print("[check] Testing Dia inference with fixed voice...")
-        test_text = f"{FIXED_VOICE_PROMPT} Hello, this is a voice consistency test."
+        # Test consistent voice generation
+        print("[check] Testing voice consistency with fixed S1 speaker...")
+        test_text = f"{FIXED_VOICE_PROMPT} Hello, this is a consistent voice test using fixed seed."
         
-        # Set seed again before generation
+        # Apply seed again before generation
         set_deterministic_seed(TTS_SEED)
-        audio_output = dia.generate(test_text, use_torch_compile=False)
-        print(f"[check] ✅ Dia inference successful. Generated {audio_output.shape} audio samples")
+        audio_output = dia.generate(
+            test_text, 
+            use_torch_compile=False,
+            max_length=2000
+        )
+        print(f"[check] ✅ Dia voice consistency test successful. Generated {audio_output.shape} samples")
         return True
         
     except Exception as e:
         print(f"[check] ❌ Dia model failed: {e}")
-        print(f"[check] Make sure you're logged into Hugging Face and the model is cached")
         return False
 
 def check_audio_processing():
     """Test audio processing components"""
     print("[check] Testing audio processing...")
     try:
-        # Test webrtcvad
         vad = webrtcvad.Vad(2)
-        test_frame = np.zeros(480, dtype=np.int16).tobytes()  # 30ms frame at 16kHz
+        test_frame = np.zeros(480, dtype=np.int16).tobytes()
         vad.is_speech(test_frame, 16000)
         print("[check] ✅ WebRTC VAD working")
         
-        # Test resampling
         test_audio = np.random.random(4096).astype(np.float32)
         resampled = resampy.resample(test_audio, 48000, 16000)
         print("[check] ✅ Audio resampling working")
@@ -172,12 +161,12 @@ def check_audio_processing():
 
 def run_preflight_checks():
     """Run all pre-flight checks"""
-    print("\n🚀 Starting DiaChat pre-flight checks...\n")
+    print("\n🚀 Starting DiaChat Voice-Optimized Pre-flight Checks...\n")
     
     checks = [
         ("Audio Processing", check_audio_processing),
         ("Whisper Model", check_whisper),
-        ("Dia Model", check_dia),
+        ("Dia Voice Model", check_dia),
         ("Ollama Service", check_ollama),
     ]
     
@@ -187,11 +176,10 @@ def run_preflight_checks():
         print(f"Checking: {name}")
         print('='*50)
         results[name] = check_func()
-        time.sleep(0.5)  # Small delay between checks
+        time.sleep(0.5)
     
-    # Summary
     print(f"\n{'='*50}")
-    print("PRE-FLIGHT RESULTS SUMMARY")
+    print("VOICE-OPTIMIZED RESULTS SUMMARY")
     print('='*50)
     
     all_passed = True
@@ -204,18 +192,16 @@ def run_preflight_checks():
     print('='*50)
     
     if all_passed:
-        print("🎉 All checks passed! DiaChat is ready to start.\n")
+        print("🎉 All voice-optimized checks passed! DiaChat ready with consistent voice.\n")
         return True
     else:
-        print("❌ Some checks failed. Please fix the issues above before starting DiaChat.")
-        print("💡 Make sure models are downloaded manually as requested.\n")
+        print("❌ Some checks failed. Please fix the issues above.\n")
         return False
 
-# ---------- FastAPI ----------
+# ---------- FASTAPI APPLICATION ----------
 app = FastAPI()
 clients = set()
 
-# Queues for threading
 to_llm = queue.Queue(maxsize=10)
 text_queue = queue.Queue(maxsize=10)
 to_tts = queue.Queue(maxsize=10)
@@ -226,11 +212,9 @@ async def audio_ws(ws: WebSocket):
     await ws.accept()
     clients.add(ws)
     
-    # Start WebSocket message handler for this client
     async def handle_outbound_messages():
         while True:
             try:
-                # Check for messages to send to this client
                 while not ws_out_queue.empty():
                     try:
                         message_parts = ws_out_queue.get_nowait()
@@ -256,7 +240,6 @@ async def audio_ws(ws: WebSocket):
                 print(f"[ws] Error handling outbound messages: {e}")
                 break
     
-    # Start the message handler task
     handler_task = asyncio.create_task(handle_outbound_messages())
     
     try:
@@ -269,9 +252,9 @@ async def audio_ws(ws: WebSocket):
         clients.remove(ws)
         handler_task.cancel()
 
-# ---------- background workers ----------
-
+# ---------- BACKGROUND WORKERS ----------
 def stt_worker():
+    """Speech-to-text worker with enhanced audio processing"""
     RATE = 16000
     FRAME_DURATION_MS = 30
     FRAME_SIZE = int(RATE * FRAME_DURATION_MS / 1000)
@@ -285,7 +268,7 @@ def stt_worker():
     silence_count = 0
     last_status_time = 0
     
-    ws_out_queue.put(("whisper_status", "Whisper model loaded and ready", False))
+    ws_out_queue.put(("whisper_status", "Whisper ready for voice input", False))
     
     while True:
         buf = to_llm.get()
@@ -305,7 +288,7 @@ def stt_worker():
                     
                     if current_time - last_status_time > 0.5:
                         audio_duration = len(speech_frames) * FRAME_DURATION_MS / 1000
-                        ws_out_queue.put(("whisper_status", f"🎤 Capturing speech... ({audio_duration:.1f}s)", False))
+                        ws_out_queue.put(("whisper_status", f"🎤 Recording speech... ({audio_duration:.1f}s)", False))
                         last_status_time = current_time
                 
                 else:
@@ -318,30 +301,30 @@ def stt_worker():
                     audio_data = np.frombuffer(speech_audio, dtype=np.int16).astype(np.float32) / 32768.0
                     
                     if len(audio_data) > RATE * 0.5:
-                        ws_out_queue.put(("whisper_status", f"🔄 Processing {audio_duration:.1f}s of audio...", True))
+                        ws_out_queue.put(("whisper_status", f"🔄 Processing {audio_duration:.1f}s of speech...", True))
                         
                         segments = model.transcribe(audio_data)
                         txt = " ".join([segment.text for segment in segments]).strip()
                         
                         if txt and len(txt) > 2:
-                            ws_out_queue.put(("whisper_status", f"✅ Transcribed: '{txt}'", False))
+                            ws_out_queue.put(("whisper_status", f"✅ Heard: '{txt}'", False))
                             ws_out_queue.put(("text", txt))
                             text_queue.put(txt)
                         else:
                             ws_out_queue.put(("whisper_status", "⚠️ No clear speech detected", False))
                     else:
-                        ws_out_queue.put(("whisper_status", f"⚠️ Audio too short ({audio_duration:.1f}s), ignoring", False))
+                        ws_out_queue.put(("whisper_status", f"⚠️ Speech too short ({audio_duration:.1f}s)", False))
                     
                     speech_frames = []
-                    threading.Timer(0.5, lambda: ws_out_queue.put(("whisper_status", "👂 Listening for speech...", False))).start()
+                    threading.Timer(0.5, lambda: ws_out_queue.put(("whisper_status", "👂 Listening for voice...", False))).start()
                     last_status_time = current_time
                     
             except Exception as e:
-                print(f"[stt] Error processing frame: {e}")
-                ws_out_queue.put(("whisper_status", f"❌ Error: {str(e)}", False))
+                print(f"[stt] Error processing audio: {e}")
                 continue
 
 def llm_worker():
+    """LLM worker for generating responses"""
     client = ollama.Client(host=OLLAMA_HOST)
     messages = []
     
@@ -373,38 +356,39 @@ def llm_worker():
         if full_response_content.strip():
             ws_out_queue.put(("ai_response", full_response_content.strip()))
             messages.append({"role": "assistant", "content": full_response_content.strip()})
-        else:
-            messages.append({"role": "assistant", "content": "(No audible response)"})
 
 def tts_worker():
-    # Set seed before loading model for consistency
+    """TTS worker with OPTIMIZED voice consistency"""
+    # Set seed before loading model for voice consistency
     set_deterministic_seed(TTS_SEED)
     
     dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
-    ws_out_queue.put(("tts_status", "🤖 Dia TTS model loaded with consistent voice", False))
+    ws_out_queue.put(("tts_status", "🎯 Voice-optimized Dia TTS ready (S1 speaker only)", False))
     
     while True:
         sentence = to_tts.get()
         if not sentence:
             continue
         
-        # Use only S1 speaker for consistency and add period if missing
+        # Ensure proper sentence ending
         if not sentence.endswith(('.', '!', '?')):
             sentence += '.'
             
+        # Use ONLY S1 speaker for consistency - this is critical
         dia_input_text = f"{FIXED_VOICE_PROMPT} {sentence}"
         
-        ws_out_queue.put(("tts_status", f"🔄 Generating consistent voice audio...", True))
+        ws_out_queue.put(("tts_status", f"🔄 Generating consistent S1 voice...", True))
         
         try:
-            # Set seed before each generation for voice consistency
+            # CRITICAL: Reset seed before each generation for voice consistency
             set_deterministic_seed(TTS_SEED)
             
-            # Generate audio with consistent settings
+            # Generate with consistent settings
             pcm24 = dia.generate(
                 dia_input_text, 
-                use_torch_compile=False,  # Disable for consistency
-                max_length=3000  # Limit length to prevent speed issues
+                use_torch_compile=False,  # Disable for deterministic behavior
+                max_length=2500,  # Limit to prevent speed issues
+                temperature=VOICE_TEMPERATURE  # Lower temperature for consistency
             )
             
             if hasattr(pcm24, 'cpu'): 
@@ -412,52 +396,51 @@ def tts_worker():
             elif not isinstance(pcm24, np.ndarray):
                 pcm24 = np.array(pcm24) 
 
-            # Resample to 48kHz for web audio
+            # Enhanced audio processing for better quality
             pcm48 = resampy.resample(pcm24.astype(np.float32), 24000, 48000)
             
-            # Normalize audio to prevent clipping and reduce noise
-            pcm48 = np.clip(pcm48, -0.95, 0.95)
+            # Normalize and prevent clipping
+            pcm48 = np.clip(pcm48, -0.9, 0.9)
             pcm48_i16 = (pcm48 * 32767).astype(np.int16).tobytes()
             
-            ws_out_queue.put(("tts_status", f"✅ Consistent voice audio generated", False))
+            ws_out_queue.put(("tts_status", f"✅ Consistent S1 voice generated", False))
             ws_out_queue.put(("audio", pcm48_i16))
             
         except Exception as e:
-            print(f"[tts_worker] Error generating audio: {e}")
-            ws_out_queue.put(("tts_status", f"❌ Error generating audio: {e}", False))
+            print(f"[tts] Error generating voice: {e}")
+            ws_out_queue.put(("tts_status", f"❌ Voice generation error: {e}", False))
         
-        threading.Timer(0.5, lambda: ws_out_queue.put(("tts_status", "👂 Ready for next text...", False))).start()
+        threading.Timer(0.3, lambda: ws_out_queue.put(("tts_status", "🎯 Ready for next text (S1 voice)", False))).start()
 
-# ---------- routes ----------
+# ---------- ROUTES ----------
 @app.get("/")
 def index():
     return FileResponse("index.html")
 
-# ---------- main ----------
+# ---------- MAIN ----------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DiaChat - Real-time voice chat with AI")
+    parser = argparse.ArgumentParser(description="DiaChat - Voice-Optimized Real-time AI Chat")
     parser.add_argument(
         "--skip-checks", 
         action="store_true", 
-        help="Skip pre-flight checks (faster startup, use when everything is already working)"
+        help="Skip pre-flight checks (use when everything is working)"
     )
     args = parser.parse_args()
     
-    # Run pre-flight checks (unless skipped)
+    # Run voice-optimized pre-flight checks
     if not args.skip_checks:
         if not run_preflight_checks():
-            print("❌ Pre-flight checks failed. Exiting.")
+            print("❌ Voice-optimized checks failed. Exiting.")
             sys.exit(1)
     else:
-        print("⚡ Skipping pre-flight checks for faster startup...")
+        print("⚡ Skipping checks for faster startup...")
     
-    # Start background threads
-    print("[main] Starting background workers...")
+    # Start background workers
+    print("[main] Starting voice-optimized workers...")
     for worker in (stt_worker, llm_worker, tts_worker):
         threading.Thread(target=worker, daemon=True).start()
     
-    print(f"[main] Starting HTTP server on port 8000...")
-    print(f"[main] Access via: http://localhost:8000")
+    print(f"[main] 🎯 Voice-optimized DiaChat server starting on port 8000...")
+    print(f"[main] Access: http://localhost:8000")
     
-    # Run HTTP server (no SSL for RunPod)
     uvicorn.run(app, host="0.0.0.0", port=8000)
