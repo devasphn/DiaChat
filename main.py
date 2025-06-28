@@ -28,7 +28,8 @@ MODELS_DIR = os.getenv("MODELS_DIR", "./models")
 os.environ["HF_HUB_CACHE"] = os.path.abspath(MODELS_DIR)
 
 WHISPER_MODEL_NAME = "base.en"
-DIA_MODEL_NAME = "nari-labs/Dia-1.6B"
+# FIXED: Use the correct model name that you successfully tested
+DIA_MODEL_NAME = "nari-labs/Dia-1.6B-0626"  # Changed from "nari-labs/Dia-1.6B"
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
@@ -113,12 +114,14 @@ def check_whisper():
         return False
 
 def check_dia():
-    """Test Dia model loading with voice consistency"""
+    """Test Dia model loading with voice consistency - FIXED VERSION"""
     print("[check] Testing Dia model with voice consistency...")
+    print(f"[check] Loading Dia model: {DIA_MODEL_NAME}")
     try:
         # Apply seed before model loading
         set_deterministic_seed(TTS_SEED)
         
+        # Use same parameters as your successful test
         dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
         print(f"[check] ✅ Dia model loaded successfully on {DEVICE}")
         
@@ -138,6 +141,9 @@ def check_dia():
         
     except Exception as e:
         print(f"[check] ❌ Dia model failed: {e}")
+        print(f"[check] ℹ️ Model name used: {DIA_MODEL_NAME}")
+        print(f"[check] ℹ️ Device: {DEVICE}")
+        print(f"[check] ℹ️ If error persists, check HuggingFace authentication")
         return False
 
 def check_audio_processing():
@@ -358,10 +364,11 @@ def llm_worker():
             messages.append({"role": "assistant", "content": full_response_content.strip()})
 
 def tts_worker():
-    """TTS worker with OPTIMIZED voice consistency"""
+    """TTS worker with OPTIMIZED voice consistency - FIXED VERSION"""
     # Set seed before loading model for voice consistency
     set_deterministic_seed(TTS_SEED)
     
+    # Use the correct model name that loads successfully
     dia = Dia.from_pretrained(DIA_MODEL_NAME, device=DEVICE, compute_dtype="float16")
     ws_out_queue.put(("tts_status", "🎯 Voice-optimized Dia TTS ready (S1 speaker only)", False))
     
