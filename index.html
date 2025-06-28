@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎙️ DiaChat - Optimized Voice AI</title>
+    <title>🎙️ DiaChat - Voice Consistency Optimized</title>
     <style>
         * {
             margin: 0;
@@ -27,7 +27,7 @@
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 900px;
+            max-width: 1000px;
             width: 100%;
             backdrop-filter: blur(10px);
         }
@@ -40,6 +40,18 @@
             background: linear-gradient(45deg, #667eea, #764ba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+        
+        .voice-badge {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 15px;
+            box-shadow: 0 3px 10px rgba(72, 187, 120, 0.4);
+            display: inline-block;
         }
         
         .controls {
@@ -143,6 +155,17 @@
             font-size: 1.3em;
         }
         
+        .optimization-indicator {
+            background: linear-gradient(45deg, #f6ad55, #ed8936);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
         .waveform-container {
             height: 100px;
             background: rgba(255, 255, 255, 0.7);
@@ -168,6 +191,7 @@
             min-height: 50px;
             display: flex;
             align-items: center;
+            font-size: 14px;
         }
         
         .processing {
@@ -180,7 +204,7 @@
         }
         
         .chat-log {
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 10px;
@@ -190,9 +214,11 @@
         
         .chat-message {
             margin-bottom: 15px;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             animation: slideIn 0.3s ease-out;
+            font-size: 14px;
+            line-height: 1.5;
         }
         
         @keyframes slideIn {
@@ -215,15 +241,18 @@
             font-weight: 700;
         }
         
-        .optimized-badge {
-            background: linear-gradient(45deg, #48bb78, #38a169);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-left: 10px;
-            box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+        .voice-info {
+            background: rgba(72, 187, 120, 0.05);
+            border: 1px solid rgba(72, 187, 120, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #2d7d32;
+        }
+        
+        .voice-info strong {
+            color: #1b5e20;
         }
         
         @media (max-width: 768px) {
@@ -245,47 +274,60 @@
             h1 {
                 font-size: 2em;
             }
+            
+            .voice-badge {
+                display: block;
+                margin: 10px auto 0;
+                text-align: center;
+                width: fit-content;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎙️ DiaChat <span class="optimized-badge">Voice Optimized</span></h1>
+        <h1>🎙️ DiaChat 
+            <span class="voice-badge">Voice Consistency Optimized</span>
+        </h1>
+        
+        <div class="voice-info">
+            <strong>🎯 Voice Optimization Active:</strong> Using fixed seed (42) + S1 speaker only for consistent voice generation. No overlapping voices or random voice changes.
+        </div>
         
         <div class="controls">
-            <button id="startBtn" class="btn">🎤 Start Listening</button>
+            <button id="startBtn" class="btn">🎤 Start Voice Chat</button>
             <button id="stopBtn" class="btn stop" disabled>⏹️ Stop</button>
             <div class="speed-control">
-                <label for="playbackSpeed">🎵 Playback Speed:</label>
+                <label for="playbackSpeed">🎵 Speed:</label>
                 <input type="range" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0">
                 <span id="speedValue">1.0x</span>
             </div>
         </div>
         
-        <div id="status" class="status">Ready to start - Optimized for consistent voice quality</div>
+        <div id="status" class="status">Ready to start - Voice consistency optimized with S1 speaker</div>
         
         <div class="section">
-            <h3>🎵 Audio Waveform</h3>
+            <h3>🎵 Voice Waveform</h3>
             <div class="waveform-container">
                 <canvas id="waveform" width="800" height="100"></canvas>
             </div>
         </div>
         
         <div class="section">
-            <h3>🎯 Whisper Status</h3>
-            <div id="whisperStatus" class="status-box">Waiting for audio...</div>
+            <h3>🎯 Speech Recognition <span class="optimization-indicator">Enhanced</span></h3>
+            <div id="whisperStatus" class="status-box">Waiting for voice input...</div>
         </div>
         
         <div class="section">
-            <h3>🤖 Dia TTS Status <span class="optimized-badge">S1 Voice Only</span></h3>
-            <div id="ttsStatus" class="status-box">Waiting for text...</div>
+            <h3>🤖 Voice Synthesis <span class="optimization-indicator">S1 Only</span></h3>
+            <div id="ttsStatus" class="status-box">Consistent voice generation ready...</div>
         </div>
         
         <div class="section">
-            <h3>💬 Conversation</h3>
+            <h3>💬 Conversation History</h3>
             <div id="chatLog" class="chat-log">
                 <div class="chat-message ai">
-                    <strong>🤖 DiaChat:</strong> Hello! I'm ready to chat with optimized voice consistency. Start speaking to begin our conversation.
+                    <strong>🤖 DiaChat:</strong> Hello! I'm ready for voice conversation with optimized consistency. I'll use the same S1 voice throughout our chat to avoid any voice switching issues. Just click "Start Voice Chat" and begin speaking!
                 </div>
             </div>
         </div>
@@ -295,7 +337,6 @@
         let ws = null;
         let audioContext = null;
         let mediaStream = null;
-        let mediaRecorder = null;
         let isRecording = false;
         let currentAudio = null;
         
@@ -320,14 +361,14 @@
             }
         });
         
-        // Waveform visualization
-        let waveformData = new Array(100).fill(0);
+        // Enhanced waveform visualization
+        let waveformData = new Array(120).fill(0);
         
         function updateWaveform(audioData) {
             if (!audioData) return;
             
             const samples = new Int16Array(audioData);
-            const bufferLength = Math.min(samples.length, 100);
+            const bufferLength = Math.min(samples.length, 120);
             const step = Math.floor(samples.length / bufferLength);
             
             for (let i = 0; i < bufferLength; i++) {
@@ -343,12 +384,13 @@
             const barWidth = waveformCanvas.width / waveformData.length;
             const gradient = waveformCtx.createLinearGradient(0, 0, 0, waveformCanvas.height);
             gradient.addColorStop(0, '#4299e1');
-            gradient.addColorStop(1, '#3182ce');
+            gradient.addColorStop(0.5, '#3182ce');
+            gradient.addColorStop(1, '#2c5282');
             
             waveformCtx.fillStyle = gradient;
             
             for (let i = 0; i < waveformData.length; i++) {
-                const barHeight = waveformData[i] * waveformCanvas.height;
+                const barHeight = waveformData[i] * waveformCanvas.height * 0.9;
                 const x = i * barWidth;
                 const y = waveformCanvas.height - barHeight;
                 
@@ -367,7 +409,8 @@
         function addChatMessage(sender, message, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${isUser ? 'user' : 'ai'}`;
-            messageDiv.innerHTML = `<strong>${isUser ? '👤 You:' : '🤖 DiaChat:'}</strong> ${message}`;
+            const prefix = isUser ? '👤 You:' : '🤖 DiaChat:';
+            messageDiv.innerHTML = `<strong>${prefix}</strong> ${message}`;
             chatLog.appendChild(messageDiv);
             chatLog.scrollTop = chatLog.scrollHeight;
         }
@@ -384,16 +427,16 @@
         
         async function startRecording() {
             try {
-                updateStatus('🔗 Connecting to server...', 'processing');
+                updateStatus('🔗 Connecting to voice-optimized server...', 'processing');
                 
                 // Connect WebSocket
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 ws = new WebSocket(`${protocol}//${window.location.host}/ws/audio`);
                 
                 ws.onopen = async () => {
-                    updateStatus('🎤 Getting microphone access...', 'processing');
+                    updateStatus('🎤 Initializing optimized voice capture...', 'processing');
                     
-                    // Get microphone access
+                    // Get microphone with enhanced settings
                     mediaStream = await navigator.mediaDevices.getUserMedia({ 
                         audio: { 
                             sampleRate: 48000,
@@ -404,7 +447,7 @@
                         } 
                     });
                     
-                    // Set up audio context for processing
+                    // Enhanced audio processing
                     audioContext = new AudioContext({ sampleRate: 48000 });
                     const source = audioContext.createMediaStreamSource(mediaStream);
                     const processor = audioContext.createScriptProcessor(4096, 1, 1);
@@ -415,15 +458,12 @@
                         const inputData = e.inputBuffer.getChannelData(0);
                         const audioData = new Int16Array(inputData.length);
                         
-                        // Convert float to int16
                         for (let i = 0; i < inputData.length; i++) {
                             audioData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
                         }
                         
-                        // Update waveform
                         updateWaveform(audioData.buffer);
                         
-                        // Send to server
                         if (ws.readyState === WebSocket.OPEN) {
                             ws.send(audioData.buffer);
                         }
@@ -435,13 +475,13 @@
                     isRecording = true;
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
-                    updateStatus('🎤 Listening... (Optimized for voice consistency)', 'listening');
+                    updateStatus('🎤 Voice chat active - S1 consistent voice ready', 'listening');
                 };
                 
                 ws.onmessage = async (event) => {
                     if (event.data instanceof ArrayBuffer) {
-                        // Audio data
-                        updateStatus('🔊 Playing AI response...', 'speaking');
+                        // Consistent voice audio playback
+                        updateStatus('🔊 Playing consistent S1 voice...', 'speaking');
                         
                         const audioBlob = new Blob([event.data], { type: 'audio/wav' });
                         const audioUrl = URL.createObjectURL(audioBlob);
@@ -456,14 +496,13 @@
                         currentAudio.onended = () => {
                             URL.revokeObjectURL(audioUrl);
                             if (isRecording) {
-                                updateStatus('🎤 Listening... (Optimized for voice consistency)', 'listening');
+                                updateStatus('🎤 Voice chat active - S1 consistent voice ready', 'listening');
                             }
                         };
                         
                         await currentAudio.play();
                         
                     } else {
-                        // JSON data
                         const data = JSON.parse(event.data);
                         
                         switch (data.type) {
@@ -493,8 +532,8 @@
                 };
                 
             } catch (error) {
-                console.error('Error starting recording:', error);
-                updateStatus('❌ Failed to start recording: ' + error.message, 'processing');
+                console.error('Error starting voice chat:', error);
+                updateStatus('❌ Failed to start: ' + error.message, 'processing');
             }
         }
         
@@ -523,20 +562,17 @@
                 ws = null;
             }
             
-            updateStatus('🔴 Stopped - Ready to start again', '');
-            updateWhisperStatus('Waiting for audio...');
-            updateTTSStatus('Waiting for text...');
+            updateStatus('🔴 Voice chat stopped - Consistent voice ready to restart', '');
+            updateWhisperStatus('Waiting for voice input...');
+            updateTTSStatus('Consistent voice generation ready...');
             
-            // Clear waveform
             waveformData.fill(0);
             drawWaveform();
         }
         
-        // Event listeners
         startBtn.addEventListener('click', startRecording);
         stopBtn.addEventListener('click', stopRecording);
         
-        // Handle page unload
         window.addEventListener('beforeunload', stopRecording);
     </script>
 </body>
